@@ -1,0 +1,698 @@
+ /*Exception Controller*/
+ (function () {
+     'use strict';
+     var ApproveDealController = function ($http,$rootScope,$scope, ajaxFactory ,$window) {
+      if('ifc-input' === $rootScope.role || 'ifc-readony' === $rootScope.role ) {
+    $scope.disableApprRejectBtn=true;
+      } 
+      $scope.selectedListForApprove=[];
+      $scope.selectedGroupForReject=[];
+      $scope.DBList=[];
+      
+      $scope.InfoMessage = ""; 
+   $scope.showInfoMessage = false;
+   $scope.showErrorMessage = false;
+   $scope.isOkCancelShow=false;
+   $scope.infoMessage="";
+   $scope.errorMessage="";
+   $scope.showbtnMessage="";
+   
+   
+      $scope.getPendingApprovalList=function()
+         {
+       $scope.InfoMessage = ""; 
+    $scope.showInfoMessage = false;
+    $scope.showErrorMessage = false;
+    $scope.isOkCancelShow=false;
+    $scope.infoMessage="";
+    $scope.errorMessage="";
+    $scope.showbtnMessage="";
+    $scope.message="";
+    ajaxFactory.getAjaxCall("/ifc/html/error/sessionerror").then(function(response) {
+     location.replace("/ifc/html/error/SessionError.html");
+     $rootScope.role = "";
+     $rootScope.userLanId = "";
+     $rootScope.userLocName = "";
+     $rootScope.sessionIdvalue = "";
+     $rootScope.userName = "";
+    }
+    );
+    
+       $scope.tablelist=[];
+       //$scope.message="Data is loading..."; 
+       $scope.showSpinner = true;
+       ajaxFactory.getAjaxCall("/ifc/proposeddeals").then(function(response) {
+        if(response.data==502 || response==502){
+      location.replace("/ifc/html/error/SessionError.html");
+      return;
+     }
+        $scope.showSpinner = false;
+       $scope.DBList = response;
+       if($scope.DBList.length==0){
+       $scope.message="No records pending for approval";
+       }if($scope.DBList.length==1 && $scope.DBList[0].responseStatus==false){
+       $scope.message=$scope.DBList[0].title;
+       }else{
+       $scope.message="";
+       $scope.getPendingApprovalListInTable();
+       }
+       },function (response) {
+        $rootScope.globalError="Error Code "+response.status+"Error Status "+response.statustext+"Error occurred ";
+        location.replace("/ifc/html/error/Error.html");
+        return;
+          }
+    );
+         };
+         
+         $scope.approveList=function(idx,tname1){
+          $scope.InfoMessage = ""; 
+    $scope.showInfoMessage = false;
+    $scope.showErrorMessage = false;
+    $scope.isOkCancelShow=false;
+    $scope.infoMessage="";
+    $scope.errorMessage="";
+    $scope.showbtnMessage="";
+    $scope.message="";
+    var count=0;
+    var status=false;
+          $scope.selectedListForApprove=[];
+          $scope.message="";
+          $scope.continues=true;
+          angular.forEach($scope.tablelist ,function(tvalue,tkey){
+           if(tvalue.tname==tname1){
+            angular.forEach(tvalue.value,function(tvalue1,tkey1){
+             if($scope.tablelist[tkey].value[tkey1].checkedStatus==true){
+              count++;
+              status=true;
+             }
+             if($scope.tablelist[tkey].value[tkey1].submittedBy==$rootScope.userLanId)
+             {
+              $scope.errorMessage="Deals cannot be approved by same person who submitted it";
+              window.scrollTo(0, 0);
+        $scope.showErrorMessage = true;
+        $scope.continues=false;
+              return;
+             }
+             $scope.selectedListForApprove.push($scope.tablelist[tkey].value[tkey1]);
+            })
+           }
+          })
+          if(status==false && count<=0){
+           $scope.errorMessage="Atleast one row must be selected";
+           window.scrollTo(0, 0);
+     $scope.showErrorMessage = true;
+     return;
+          }else{
+          if($scope.continues==true){
+          //alert($scope.selectedListForApprove.length);
+           $scope.showSpinner = true;
+          ajaxFactory.postAjaxCall("/ifc/approvedeals",$scope.selectedListForApprove).then(function(response) {
+           if(response.data==502 || response==502){
+      location.replace("/ifc/html/error/SessionError.html");
+      return;
+     }
+           $scope.infoMessage = response;
+           $scope.showInfoMessage = true;
+          },function (response) {
+        $rootScope.globalError="Error Code "+response.status+"Error Status "+response.statustext+"Error occurred ";
+        location.replace("/ifc/html/error/Error.html");
+        return;
+          }
+          );
+          ajaxFactory.getAjaxCall("/ifc/proposeddeals").then(function(response) {
+           if(response.data==502 || response==502){
+      location.replace("/ifc/html/error/SessionError.html");
+      return;
+     }
+           $scope.showSpinner = false;
+           $scope.DBList=[];
+           $scope.DBList = response;
+     if($scope.DBList.length==0){
+     $scope.message="No records pending for approval";
+     window.scrollTo(0, 0);
+     $scope.getPendingApprovalListInTable();
+     }if($scope.DBList.length==1 && $scope.DBList[0].responseStatus==false){
+     $scope.message=$scope.DBList[0].title;
+     $scope.DBList=[];
+     $scope.getPendingApprovalListInTable();
+     }else{
+     $scope.getPendingApprovalListInTable();
+     }
+    },function (response) {
+     $rootScope.globalError="Error Code "+response.status+"Error Status "+response.statustext+"Error occurred ";
+     location.replace("/ifc/html/error/Error.html");
+     return;
+       }
+    );
+          $scope.selectedListForApprove=[];
+          }
+          }
+         };
+         
+         $scope.rejectList=function(idx,tname1){
+          $scope.InfoMessage = ""; 
+    $scope.showInfoMessage = false;
+    $scope.showErrorMessage = false;
+    $scope.isOkCancelShow=false;
+    $scope.infoMessage="";
+    $scope.errorMessage="";
+    $scope.showbtnMessage="";
+    $scope.message="";
+    
+          $scope.selectedGroupForReject=[];
+          angular.forEach($scope.tablelist ,function(tvalue,tkey){
+           if(tvalue.tname==tname1){
+            angular.forEach(tvalue.value,function(tvalue1,tkey1){
+             $scope.selectedGroupForReject.push($scope.tablelist[tkey].value[tkey1]);
+            })
+           }
+          })
+          
+          $scope.isOkCancelShow=true;
+          $scope.showbtnMessage="Are you sure, you want to override the approve/reject process ?";
+          window.scrollTo(0, 0);
+          
+         };
+         
+         $scope.rejectConfirm=function(){
+         $scope.isOkCancelShow=false;
+         $scope.showbtnMessage="";
+         $scope.showSpinner = true;
+         ajaxFactory.postAjaxCall("/ifc/rejectdeals",$scope.selectedGroupForReject).then(function(response) {
+          if(response.data==502 || response==502){
+     location.replace("/ifc/html/error/SessionError.html");
+     return;
+    }
+          $scope.infoMessage = response;
+          $scope.showInfoMessage = true;
+         },function (response) {
+       $rootScope.globalError="Error Code "+response.status+"Error Status "+response.statustext+"Error occurred ";
+       location.replace("/ifc/html/error/Error.html");
+       return;
+         }
+         );
+         ajaxFactory.getAjaxCall("/ifc/proposeddeals").then(function(response) {
+          if(response.data==502 || response==502){
+     location.replace("/ifc/html/error/SessionError.html");
+     return;
+    }
+          $scope.showSpinner = false;
+          $scope.DBList=[];
+    $scope.DBList = response;
+    if($scope.DBList.length==0){
+    $scope.message="No records pending for approval";
+    window.scrollTo(0, 0);
+    $scope.getPendingApprovalListInTable();
+    }if($scope.DBList.length==1 && $scope.DBList[0].responseStatus==false){
+    $scope.message=$scope.DBList[0].title;
+    $scope.DBList=[];
+    $scope.getPendingApprovalListInTable();
+    }else{
+    $scope.getPendingApprovalListInTable();
+    }
+   },function (response) {
+    $rootScope.globalError="Error Code "+response.status+"Error Status "+response.statustext+"Error occurred ";
+    location.replace("/ifc/html/error/Error.html");
+    return;
+      }
+   );
+         $scope.selectedGroupForReject=[];
+         };
+         
+         $scope.rejectCancel=function(){
+          $scope.isOkCancelShow=false;
+          $scope.showbtnMessage="";
+          $scope.selectedGroupForReject=[];
+         }
+         
+         $scope.getPendingApprovalListInTable=function(){
+          $scope.tablelist=[];
+          var continueloop="true";
+          angular.forEach($scope.DBList ,function(value,key){
+     var consolidationaccountcombn=value.grouping;
+           if($scope.tablelist.length>0){
+           continueloop=true;
+           angular.forEach($scope.tablelist ,function(tvalue,tkey){
+           if(continueloop){
+            if(tvalue.tname==consolidationaccountcombn){
+             $scope.tablelist[tkey].value.push(value);
+             continueloop=false;
+            }
+            else{
+             if(tkey==($scope.tablelist.length-1)){
+              if('ifc-input' === $rootScope.role || 'ifc-readony' === $rootScope.role ) {
+               $scope.tablelist.push({tname:consolidationaccountcombn,groupStatus:true,approveButtonEnable:true,checkAll:false,value:[value]});
+                 }else{
+                  $scope.tablelist.push({tname:consolidationaccountcombn,groupStatus:true,approveButtonEnable:false,checkAll:false,value:[value]}); 
+                 }
+              
+             } 
+            }
+           }
+           })
+           }
+           else
+           {
+            if('ifc-input' === $rootScope.role || 'ifc-readony' === $rootScope.role ) {
+       $scope.tablelist.push({tname:consolidationaccountcombn,groupStatus:true,approveButtonEnable:true,checkAll:false,value:[value]});
+         }else{
+          $scope.tablelist.push({tname:consolidationaccountcombn,groupStatus:true,approveButtonEnable:false,checkAll:false,value:[value]}); 
+         }
+           }
+          })
+         };
+         
+         $scope.getSelectedRows=function(idx,tname1){
+          var status=true;
+          var count=0;
+          angular.forEach($scope.tablelist,function(tvalue,tkey){
+            count=0;
+            angular.forEach(tvalue.value,function(tvalue1,tkey1){
+             if($scope.tablelist[tkey].value[tkey1].checkedStatus==true){
+              status=false;
+              count++;
+             }
+            })
+            
+            if(tvalue.value.length==count){
+             $scope.tablelist[tkey].checkAll=true;
+               }else{
+             $scope.tablelist[tkey].checkAll=false;
+               }
+            //if user has no access to approve then make button as disabled
+           /*if(('ifc-input' === $rootScope.role || 'ifc-readony' === $rootScope.role) &&  status==false )
+            status=true;
+           
+           $scope.tablelist[tkey].approveButtonEnable=status;*/
+          })
+         };
+         
+         $scope.getSelectAll=function(idx,tname1){
+          angular.forEach($scope.tablelist ,function(tvalue,tkey){
+           if(tvalue.tname==tname1){
+            if($scope.tablelist[tkey].checkAll==true){
+             /*if('ifc-input' === $rootScope.role || 'ifc-readony' === $rootScope.role )
+              $scope.tablelist[tkey].approveButtonEnable=true;
+             else
+              $scope.tablelist[tkey].approveButtonEnable=false;*/
+             angular.forEach(tvalue.value,function(tvalue1,tkey1){
+             $scope.tablelist[tkey].value[tkey1].checkedStatus=true;
+             })
+            }
+            else{
+             $scope.tablelist[tkey].approveButtonEnable=true;
+             angular.forEach(tvalue.value,function(tvalue1,tkey1){
+              $scope.tablelist[tkey].value[tkey1].checkedStatus=false;
+             })
+            }
+           }
+          })
+          
+         };
+         
+     } 
+   
+     ApproveDealController.$inject = ['$http','$rootScope','$scope', 'ajaxFactory' , '$window'];
+     angular.module('app.NTApp').controller('ApproveDealController', ApproveDealController);
+ }());
+   
+
+ 
+________________________________________
+ 
+
+
+(function () {
+    
+ 'use strict';    
+ angular.module('app.NTApp').factory('ajaxFactory', ['$http', '$q', '$timeout', function ($http, $q, $timeout) {
+  var exceptionMangFactory = {};
+  
+  return { 
+   getAjaxCall : function(url){
+      var deferred = $q.defer();
+      var res = $http.get(url).success(function(result) {
+       deferred.resolve(result);
+       return result;
+      }).error(function(reason) {
+       deferred.reject(reason);
+      });
+      return deferred.promise;
+   }
+   ,postAjaxCall : function(url,param){
+      var deferred = $q.defer();
+      var res = $http.post(url,param).success(function(result) {
+       deferred.resolve(result);
+       return result;
+      }).error(function(reason) {
+       deferred.reject(reason);
+      });
+      return deferred.promise;
+   }
+  };
+  return exceptionMangFactory;
+ }]);
+}());
+/*
+postAjaxCall : function(url, param){
+        var deferred = $q.defer(); 
+        var res= $http.post(url,param).success(function(result){
+        //console.log('AdminService::saveCurrency');
+        deferred.resolve(result);
+        return result;
+        }).error(function(reason){        
+        deferred.reject(reason);        
+        });
+        return deferred.promise;
+        return $http.post(url,param);
+      }
+};
+return exceptionMangFactory;
+*/
+________________________________________
+From: Subramanian, SathishKumar
+Sent: Wednesday, August 24, 2016 4:08 PM
+To: Santhanam, Paranthaman
+Subject: RE: controller
+ /*Exception Controller*/
+ (function () {
+     'use strict';
+     var ApproveDealController = function ($http,$rootScope,$scope, ajaxFactory ,$window) {
+      if('ifc-input' === $rootScope.role || 'ifc-readony' === $rootScope.role ) {
+    $scope.disableApprRejectBtn=true;
+      } 
+      $scope.selectedListForApprove=[];
+      $scope.selectedGroupForReject=[];
+      $scope.DBList=[];
+      
+      $scope.InfoMessage = ""; 
+   $scope.showInfoMessage = false;
+   $scope.showErrorMessage = false;
+   $scope.isOkCancelShow=false;
+   $scope.infoMessage="";
+   $scope.errorMessage="";
+   $scope.showbtnMessage="";
+   
+   
+      $scope.getPendingApprovalList=function()
+         {
+       $scope.InfoMessage = ""; 
+    $scope.showInfoMessage = false;
+    $scope.showErrorMessage = false;
+    $scope.isOkCancelShow=false;
+    $scope.infoMessage="";
+    $scope.errorMessage="";
+    $scope.showbtnMessage="";
+    $scope.message="";
+    ajaxFactory.getAjaxCall("/ifc/html/error/sessionerror").then(function(response) {
+     location.replace("/ifc/html/error/SessionError.html");
+     $rootScope.role = "";
+     $rootScope.userLanId = "";
+     $rootScope.userLocName = "";
+     $rootScope.sessionIdvalue = "";
+     $rootScope.userName = "";
+    }
+    );
+    
+       $scope.tablelist=[];
+       //$scope.message="Data is loading..."; 
+       $scope.showSpinner = true;
+       ajaxFactory.getAjaxCall("/ifc/proposeddeals").then(function(response) {
+        if(response.data==502 || response==502){
+      location.replace("/ifc/html/error/SessionError.html");
+      return;
+     }
+        $scope.showSpinner = false;
+       $scope.DBList = response;
+       if($scope.DBList.length==0){
+       $scope.message="No records pending for approval";
+       }if($scope.DBList.length==1 && $scope.DBList[0].responseStatus==false){
+       $scope.message=$scope.DBList[0].title;
+       }else{
+       $scope.message="";
+       $scope.getPendingApprovalListInTable();
+       }
+       },function (response) {
+        $rootScope.globalError="Error Code "+response.status+"Error Status "+response.statustext+"Error occurred ";
+        location.replace("/ifc/html/error/Error.html");
+        return;
+          }
+    );
+         };
+         
+         $scope.approveList=function(idx,tname1){
+          $scope.InfoMessage = ""; 
+    $scope.showInfoMessage = false;
+    $scope.showErrorMessage = false;
+    $scope.isOkCancelShow=false;
+    $scope.infoMessage="";
+    $scope.errorMessage="";
+    $scope.showbtnMessage="";
+    $scope.message="";
+    var count=0;
+    var status=false;
+          $scope.selectedListForApprove=[];
+          $scope.message="";
+          $scope.continues=true;
+          angular.forEach($scope.tablelist ,function(tvalue,tkey){
+           if(tvalue.tname==tname1){
+            angular.forEach(tvalue.value,function(tvalue1,tkey1){
+             if($scope.tablelist[tkey].value[tkey1].checkedStatus==true){
+              count++;
+              status=true;
+             }
+             if($scope.tablelist[tkey].value[tkey1].submittedBy==$rootScope.userLanId)
+             {
+              $scope.errorMessage="Deals cannot be approved by same person who submitted it";
+              window.scrollTo(0, 0);
+        $scope.showErrorMessage = true;
+        $scope.continues=false;
+              return;
+             }
+             $scope.selectedListForApprove.push($scope.tablelist[tkey].value[tkey1]);
+            })
+           }
+          })
+          if(status==false && count<=0){
+           $scope.errorMessage="Atleast one row must be selected";
+           window.scrollTo(0, 0);
+     $scope.showErrorMessage = true;
+     return;
+          }else{
+          if($scope.continues==true){
+          //alert($scope.selectedListForApprove.length);
+           $scope.showSpinner = true;
+          ajaxFactory.postAjaxCall("/ifc/approvedeals",$scope.selectedListForApprove).then(function(response) {
+           if(response.data==502 || response==502){
+      location.replace("/ifc/html/error/SessionError.html");
+      return;
+     }
+           $scope.infoMessage = response;
+           $scope.showInfoMessage = true;
+          },function (response) {
+        $rootScope.globalError="Error Code "+response.status+"Error Status "+response.statustext+"Error occurred ";
+        location.replace("/ifc/html/error/Error.html");
+        return;
+          }
+          );
+          ajaxFactory.getAjaxCall("/ifc/proposeddeals").then(function(response) {
+           if(response.data==502 || response==502){
+      location.replace("/ifc/html/error/SessionError.html");
+      return;
+     }
+           $scope.showSpinner = false;
+           $scope.DBList=[];
+           $scope.DBList = response;
+     if($scope.DBList.length==0){
+     $scope.message="No records pending for approval";
+     window.scrollTo(0, 0);
+     $scope.getPendingApprovalListInTable();
+     }if($scope.DBList.length==1 && $scope.DBList[0].responseStatus==false){
+     $scope.message=$scope.DBList[0].title;
+     $scope.DBList=[];
+     $scope.getPendingApprovalListInTable();
+     }else{
+     $scope.getPendingApprovalListInTable();
+     }
+    },function (response) {
+     $rootScope.globalError="Error Code "+response.status+"Error Status "+response.statustext+"Error occurred ";
+     location.replace("/ifc/html/error/Error.html");
+     return;
+       }
+    );
+          $scope.selectedListForApprove=[];
+          }
+          }
+         };
+         
+         $scope.rejectList=function(idx,tname1){
+          $scope.InfoMessage = ""; 
+    $scope.showInfoMessage = false;
+    $scope.showErrorMessage = false;
+    $scope.isOkCancelShow=false;
+    $scope.infoMessage="";
+    $scope.errorMessage="";
+    $scope.showbtnMessage="";
+    $scope.message="";
+    
+          $scope.selectedGroupForReject=[];
+          angular.forEach($scope.tablelist ,function(tvalue,tkey){
+           if(tvalue.tname==tname1){
+            angular.forEach(tvalue.value,function(tvalue1,tkey1){
+             $scope.selectedGroupForReject.push($scope.tablelist[tkey].value[tkey1]);
+            })
+           }
+          })
+          
+          $scope.isOkCancelShow=true;
+          $scope.showbtnMessage="Are you sure, you want to override the approve/reject process ?";
+          window.scrollTo(0, 0);
+          
+         };
+         
+         $scope.rejectConfirm=function(){
+         $scope.isOkCancelShow=false;
+         $scope.showbtnMessage="";
+         $scope.showSpinner = true;
+         ajaxFactory.postAjaxCall("/ifc/rejectdeals",$scope.selectedGroupForReject).then(function(response) {
+          if(response.data==502 || response==502){
+     location.replace("/ifc/html/error/SessionError.html");
+     return;
+    }
+          $scope.infoMessage = response;
+          $scope.showInfoMessage = true;
+         },function (response) {
+       $rootScope.globalError="Error Code "+response.status+"Error Status "+response.statustext+"Error occurred ";
+       location.replace("/ifc/html/error/Error.html");
+       return;
+         }
+         );
+         ajaxFactory.getAjaxCall("/ifc/proposeddeals").then(function(response) {
+          if(response.data==502 || response==502){
+     location.replace("/ifc/html/error/SessionError.html");
+     return;
+    }
+          $scope.showSpinner = false;
+          $scope.DBList=[];
+    $scope.DBList = response;
+    if($scope.DBList.length==0){
+    $scope.message="No records pending for approval";
+    window.scrollTo(0, 0);
+    $scope.getPendingApprovalListInTable();
+    }if($scope.DBList.length==1 && $scope.DBList[0].responseStatus==false){
+    $scope.message=$scope.DBList[0].title;
+    $scope.DBList=[];
+    $scope.getPendingApprovalListInTable();
+    }else{
+    $scope.getPendingApprovalListInTable();
+    }
+   },function (response) {
+    $rootScope.globalError="Error Code "+response.status+"Error Status "+response.statustext+"Error occurred ";
+    location.replace("/ifc/html/error/Error.html");
+    return;
+      }
+   );
+         $scope.selectedGroupForReject=[];
+         };
+         
+         $scope.rejectCancel=function(){
+          $scope.isOkCancelShow=false;
+          $scope.showbtnMessage="";
+          $scope.selectedGroupForReject=[];
+         }
+         
+         $scope.getPendingApprovalListInTable=function(){
+          $scope.tablelist=[];
+          var continueloop="true";
+          angular.forEach($scope.DBList ,function(value,key){
+     var consolidationaccountcombn=value.grouping;
+           if($scope.tablelist.length>0){
+           continueloop=true;
+           angular.forEach($scope.tablelist ,function(tvalue,tkey){
+           if(continueloop){
+            if(tvalue.tname==consolidationaccountcombn){
+             $scope.tablelist[tkey].value.push(value);
+             continueloop=false;
+            }
+            else{
+             if(tkey==($scope.tablelist.length-1)){
+              if('ifc-input' === $rootScope.role || 'ifc-readony' === $rootScope.role ) {
+               $scope.tablelist.push({tname:consolidationaccountcombn,groupStatus:true,approveButtonEnable:true,checkAll:false,value:[value]});
+                 }else{
+                  $scope.tablelist.push({tname:consolidationaccountcombn,groupStatus:true,approveButtonEnable:false,checkAll:false,value:[value]}); 
+                 }
+              
+             } 
+            }
+           }
+           })
+           }
+           else
+           {
+            if('ifc-input' === $rootScope.role || 'ifc-readony' === $rootScope.role ) {
+       $scope.tablelist.push({tname:consolidationaccountcombn,groupStatus:true,approveButtonEnable:true,checkAll:false,value:[value]});
+         }else{
+          $scope.tablelist.push({tname:consolidationaccountcombn,groupStatus:true,approveButtonEnable:false,checkAll:false,value:[value]}); 
+         }
+           }
+          })
+         };
+         
+         $scope.getSelectedRows=function(idx,tname1){
+          var status=true;
+          var count=0;
+          angular.forEach($scope.tablelist,function(tvalue,tkey){
+            count=0;
+            angular.forEach(tvalue.value,function(tvalue1,tkey1){
+             if($scope.tablelist[tkey].value[tkey1].checkedStatus==true){
+              status=false;
+              count++;
+             }
+            })
+            
+            if(tvalue.value.length==count){
+             $scope.tablelist[tkey].checkAll=true;
+               }else{
+             $scope.tablelist[tkey].checkAll=false;
+               }
+            //if user has no access to approve then make button as disabled
+           /*if(('ifc-input' === $rootScope.role || 'ifc-readony' === $rootScope.role) &&  status==false )
+            status=true;
+           
+           $scope.tablelist[tkey].approveButtonEnable=status;*/
+          })
+         };
+         
+         $scope.getSelectAll=function(idx,tname1){
+          angular.forEach($scope.tablelist ,function(tvalue,tkey){
+           if(tvalue.tname==tname1){
+            if($scope.tablelist[tkey].checkAll==true){
+             /*if('ifc-input' === $rootScope.role || 'ifc-readony' === $rootScope.role )
+              $scope.tablelist[tkey].approveButtonEnable=true;
+             else
+              $scope.tablelist[tkey].approveButtonEnable=false;*/
+             angular.forEach(tvalue.value,function(tvalue1,tkey1){
+             $scope.tablelist[tkey].value[tkey1].checkedStatus=true;
+             })
+            }
+            else{
+             $scope.tablelist[tkey].approveButtonEnable=true;
+             angular.forEach(tvalue.value,function(tvalue1,tkey1){
+              $scope.tablelist[tkey].value[tkey1].checkedStatus=false;
+             })
+            }
+           }
+          })
+          
+         };
+         
+     } 
+   
+     ApproveDealController.$inject = ['$http','$rootScope','$scope', 'ajaxFactory' , '$window'];
+     angular.module('app.NTApp').controller('ApproveDealController', ApproveDealController);
+ }());
+   
+
+ 
+________________________________________
+ 
